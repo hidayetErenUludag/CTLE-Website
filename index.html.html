@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTLE Designer — PCIe 3.0</title>
+<style>
+  :root {
+    --bg: #0e1117;
+    --surface: #161b22;
+    --surface2: #1c2129;
+    --border: #2a3140;
+    --border-hi: #3d4a5c;
+    --text: #e2e6ed;
+    --text2: #8b95a5;
+    --text3: #5a6577;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --red: #f85149;
+    --amber: #d29922;
+    --font: 'SF Mono','Cascadia Code','JetBrains Mono','Fira Code',Consolas,monospace;
+    --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5}
+
+  .header{height:48px;padding:0 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+  .header h1{font-size:16px;font-weight:600}
+  .header h1 span{color:var(--accent)}
+  .header .sub{font-size:12px;color:var(--text3)}
+
+  .metrics-bar{height:58px;display:flex;gap:1px;background:var(--border);border-bottom:1px solid var(--border);flex-shrink:0}
+  .m-card{flex:1;background:var(--surface);padding:8px 14px;display:flex;flex-direction:column;justify-content:center}
+  .m-card .m-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);line-height:1.2}
+  .m-card .m-val{font-size:17px;font-weight:600;font-family:var(--font);line-height:1.3}
+
+  .warn-bar{height:28px;font-size:11px;padding:0 14px;background:rgba(210,153,34,.1);color:var(--amber);border-bottom:1px solid rgba(210,153,34,.2);display:flex;align-items:center;flex-shrink:0;visibility:hidden}
+  .warn-bar.visible{visibility:visible}
+
+  .body-wrap{display:grid;grid-template-columns:310px minmax(0,1fr);height:calc(100vh - 48px - 58px - 28px)}
+
+  .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:14px 16px;overflow-y:auto}
+  .sect{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:600;margin:12px 0 4px}
+  .sect:first-child{margin-top:0}
+
+  .param{display:flex;align-items:center;gap:6px;height:30px}
+  .param .p-lbl{font-size:12px;color:var(--text2);min-width:30px}
+  .param .p-lbl sub{font-size:10px}
+  .param input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:4px;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
+  .param input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);cursor:pointer}
+  .param input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);cursor:pointer}
+  .param .p-input{width:56px;height:24px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font);font-size:11px;text-align:right;padding:0 6px;outline:none}
+  .param .p-input:focus{border-color:var(--accent)}
+  .param .p-unit{font-size:10px;color:var(--text3);min-width:18px}
+
+  .btn-group{display:flex;gap:4px}
+  .btn{font-size:11px;font-family:var(--sans);padding:4px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;transition:all .15s}
+  .btn:hover{background:var(--surface2);border-color:var(--border-hi);color:var(--text)}
+  .btn.active{background:rgba(88,166,255,.12);border-color:var(--accent);color:var(--accent)}
+
+  .check-row{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0}
+  .check-row label{font-size:11px;color:var(--text2);display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none}
+  .check-row input[type=checkbox]{accent-color:var(--accent)}
+
+  .preset-row{display:flex;flex-wrap:wrap;gap:4px}
+  .preset{font-size:10px;font-family:var(--sans);padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer}
+  .preset:hover{background:var(--surface2);color:var(--text2)}
+
+  .ref-box{margin-top:14px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px}
+  .ref-box .r-title{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:600;margin-bottom:6px}
+  .ref-box .r-eq{font-size:12px;color:var(--text2);font-family:var(--font);line-height:1.8}
+
+  .main{display:flex;flex-direction:column;overflow:hidden}
+  .plot-header{height:28px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0}
+  .legend{display:flex;gap:16px;font-size:11px;color:var(--text2)}
+  .legend span{display:flex;align-items:center;gap:5px}
+  .legend .ld{display:inline-block;width:16px;height:3px;border-radius:1px}
+  .legend .ldd{display:inline-block;width:16px;height:0;border-top:2px dashed}
+  .plot-area{flex:1;overflow:hidden;position:relative}
+  .plot-area canvas{position:absolute;top:0;left:0}
+
+  .bottom-cards{height:44px;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-top:1px solid var(--border);flex-shrink:0}
+  .b-card{background:var(--surface);padding:4px 14px;display:flex;flex-direction:column;justify-content:center}
+  .b-card .b-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;line-height:1.2}
+  .b-card .b-val{font-size:14px;font-weight:600;font-family:var(--font);line-height:1.3}
+
+  @media(max-width:768px){.body-wrap{grid-template-columns:1fr;grid-template-rows:auto 1fr}.sidebar{border-right:none;border-bottom:1px solid var(--border);max-height:45vh}}
+</style>
+</head>
+<body>
+<div class="header"><h1><span>CTLE</span> Designer</h1><div class="sub">PCIe 3.0 · 8 Gbps · f<sub>Nyq</sub> = 4 GHz</div></div>
+<div class="metrics-bar">
+  <div class="m-card"><div class="m-label">f<sub>z</sub></div><div class="m-val" id="mv-fz">—</div></div>
+  <div class="m-card"><div class="m-label">f<sub>p1</sub></div><div class="m-val" id="mv-fp1">—</div></div>
+  <div class="m-card"><div class="m-label">f<sub>p2</sub></div><div class="m-val" id="mv-fp2">—</div></div>
+  <div class="m-card"><div class="m-label">Peaking</div><div class="m-val" id="mv-peak">—</div></div>
+  <div class="m-card"><div class="m-label">DC gain</div><div class="m-val" id="mv-dc">—</div></div>
+  <div class="m-card"><div class="m-label">f<sub>p1</sub>/f<sub>Nyq</sub></div><div class="m-val" id="mv-ratio">—</div></div>
+</div>
+<div class="warn-bar" id="warn"> </div>
+<div class="body-wrap">
+  <div class="sidebar">
+    <div class="sect">Transistor & degeneration</div>
+    <div class="param"><span class="p-lbl">g<sub>m</sub></span><input type="range" id="sl-gm" min="0.5" max="30" step="0.1" value="6.61"><input type="text" class="p-input" id="in-gm" value="6.61"><span class="p-unit">mS</span></div>
+    <div class="param"><span class="p-lbl">R<sub>S</sub></span><input type="range" id="sl-rs" min="50" max="5000" step="10" value="1000"><input type="text" class="p-input" id="in-rs" value="1000"><span class="p-unit">Ω</span></div>
+    <div class="param"><span class="p-lbl">C<sub>S</sub></span><input type="range" id="sl-cs" min="10" max="1000" step="5" value="250"><input type="text" class="p-input" id="in-cs" value="250"><span class="p-unit">fF</span></div>
+    <div class="sect">Output load</div>
+    <div class="param"><span class="p-lbl">R<sub>D</sub></span><input type="range" id="sl-rd" min="50" max="2000" step="10" value="400"><input type="text" class="p-input" id="in-rd" value="400"><span class="p-unit">Ω</span></div>
+    <div class="param"><span class="p-lbl">C<sub>load</sub></span><input type="range" id="sl-cload" min="0" max="100" step="1" value="20"><input type="text" class="p-input" id="in-cload" value="20"><span class="p-unit">fF</span></div>
+    <div class="param"><span class="p-lbl">C<sub>par</sub></span><input type="range" id="sl-cpar" min="0" max="200" step="1" value="30"><input type="text" class="p-input" id="in-cpar" value="30"><span class="p-unit">fF</span></div>
+    <div style="font-size:10px;color:var(--text3);margin:2px 0 0 36px">C<sub>P</sub> = C<sub>load</sub> + C<sub>par</sub> = <span id="cp-total">50</span> fF</div>
+    <div class="sect">Channel overlay</div>
+    <div class="btn-group">
+      <button class="btn active" id="ch-off" onclick="setCh('off')">Off</button>
+      <button class="btn" id="ch-10" onclick="setCh('10')">10 dB</button>
+      <button class="btn" id="ch-20" onclick="setCh('20')">20 dB</button>
+      <button class="btn" id="ch-custom" onclick="setCh('custom')">Custom</button>
+    </div>
+    <div id="custom-ch-row" style="display:none;margin-top:4px"><div class="param"><span class="p-lbl">Loss</span><input type="range" id="sl-chloss" min="1" max="40" step="0.5" value="15"><input type="text" class="p-input" id="in-chloss" value="15"><span class="p-unit">dB</span></div></div>
+    <div class="sect">Data rate &amp; Nyquist</div>
+    <div class="param"><span class="p-lbl">Rate</span><input type="range" id="sl-datarate" min="1" max="120" step="0.5" value="8"><input type="text" class="p-input" id="in-datarate" value="8"><span class="p-unit">Gbps</span></div>
+    <div class="btn-group" style="margin-bottom:4px">
+      <button class="btn active" id="mod-nrz" onclick="setMod('nrz')">NRZ</button>
+      <button class="btn" id="mod-pam4" onclick="setMod('pam4')">PAM4</button>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin:2px 0 0 36px">f<sub>Nyq</sub> = <span id="fnyq-display">4.00</span> GHz</div>
+    <div style="font-size:10px;color:var(--text3);margin:2px 0 0 36px">Gain @ f<sub>Nyq</sub> = <span id="ft-gain" style="color:var(--text2)">—</span></div>
+    <div class="check-row">
+      <label><input type="checkbox" id="show-combo" checked onchange="update()"> Combined</label>
+      <label><input type="checkbox" id="show-nyq" checked onchange="update()"> f<sub>Nyq</sub></label>
+      <label><input type="checkbox" id="show-poles" checked onchange="update()"> Poles/zeros</label>
+    </div>
+    <div class="sect">Presets</div>
+    <div class="preset-row">
+      <button class="preset" onclick="setPreset('low')">10 dB channel</button>
+      <button class="preset" onclick="setPreset('high')">20 dB channel</button>
+    </div>
+    <div class="sect">Saved configurations</div>
+    <div style="display:flex;gap:4px;margin-bottom:4px">
+      <input type="text" id="save-name" placeholder="Config name…" style="flex:1;font-size:11px;font-family:var(--sans);padding:3px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text)">
+      <button class="preset" onclick="saveConfig()" style="white-space:nowrap">💾 Save</button>
+    </div>
+    <div id="saved-list" style="display:flex;flex-direction:column;gap:3px"></div>
+    <div class="ref-box">
+      <div class="r-title">Transfer function</div>
+      <div class="r-eq">f<sub>z</sub> = 1/(2πR<sub>S</sub>C<sub>S</sub>)<br>f<sub>p1</sub> = (1+g<sub>m</sub>R<sub>S</sub>/2)·f<sub>z</sub><br>f<sub>p2</sub> = 1/(2πR<sub>D</sub>C<sub>P</sub>)<br><span style="color:var(--text3);font-size:11px">Target: f<sub>p1</sub>/f<sub>Nyq</sub> ≈ 0.33</span></div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="plot-header"><div class="legend" id="legend"></div><div style="font-size:10px;color:var(--text3);font-family:var(--font)" id="cursor-info"></div></div>
+    <div class="plot-area" id="plot-area"><canvas id="bode"></canvas></div>
+    <div class="bottom-cards">
+      <div class="b-card"><div class="b-lbl">Boost factor</div><div class="b-val" id="bv-boost">—</div></div>
+      <div class="b-card"><div class="b-lbl">Peak gain</div><div class="b-val" id="bv-pkg">—</div></div>
+      <div class="b-card"><div class="b-lbl">g<sub>m</sub>R<sub>S</sub>/2</div><div class="b-val" id="bv-gmrs">—</div></div>
+    </div>
+  </div>
+</div>
+<script>
+var FNYQ=4e9,modulation='nrz',channelMode='off',customLoss=15,plotW=0,plotH=0;
+var PARAMS=['gm','rs','cs','rd','cload','cpar'];
+var canvas=document.getElementById('bode'),c=canvas.getContext('2d'),plotArea=document.getElementById('plot-area');
+var F=(function(){var p=[];for(var e=5.5;e<=10.8;e+=.025)p.push(Math.pow(10,e));return p})();
+var PAD={t:16,r:20,b:40,l:52},FMIN=1e6,FMAX=5e10,YMIN=-40,YMAX=25;
+var LOGMIN=Math.log10(FMIN),LOGMAX=Math.log10(FMAX);
+var cachedP=null;
+
+function gv(id){return parseFloat(document.getElementById('sl-'+id).value)}
+function ga(){var cl=gv('cload'),cr=gv('cpar');document.getElementById('cp-total').textContent=(cl+cr).toFixed(0);return{gm:gv('gm'),rs:gv('rs'),cs:gv('cs'),rd:gv('rd'),cp:cl+cr}}
+function s2f(id){document.getElementById('in-'+id).value=document.getElementById('sl-'+id).value}
+function f2s(id){var v=parseFloat(document.getElementById('in-'+id).value);if(!isNaN(v)){var sl=document.getElementById('sl-'+id);var cl=Math.min(parseFloat(sl.max),Math.max(parseFloat(sl.min),v));sl.value=cl;document.getElementById('in-'+id).value=parseFloat(cl.toPrecision(6))}}
+PARAMS.forEach(function(id){
+  document.getElementById('sl-'+id).addEventListener('input',function(){s2f(id);update()});
+  var inp=document.getElementById('in-'+id);
+  inp.addEventListener('change',function(){f2s(id);update()});
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter'){f2s(id);update();inp.blur()}});
+});
+document.getElementById('sl-chloss').addEventListener('input',function(){document.getElementById('in-chloss').value=this.value;customLoss=parseFloat(this.value);update()});
+var cli=document.getElementById('in-chloss');
+cli.addEventListener('change',function(){var v=parseFloat(this.value);if(!isNaN(v)&&v>0){customLoss=v;document.getElementById('sl-chloss').value=v;update()}});
+cli.addEventListener('keydown',function(e){if(e.key==='Enter'){this.dispatchEvent(new Event('change'));this.blur()}});
+
+function updateFnyq(){var rate=parseFloat(document.getElementById('sl-datarate').value);var div=modulation==='pam4'?4:2;FNYQ=rate*1e9/div;document.getElementById('fnyq-display').textContent=(FNYQ/1e9).toFixed(2);document.getElementById('in-datarate').value=rate}
+function setMod(m){modulation=m;document.getElementById('mod-nrz').classList.toggle('active',m==='nrz');document.getElementById('mod-pam4').classList.toggle('active',m==='pam4');updateFnyq();update()}
+document.getElementById('sl-datarate').addEventListener('input',function(){updateFnyq();update()});
+var dri=document.getElementById('in-datarate');
+dri.addEventListener('change',function(){var v=parseFloat(this.value);if(!isNaN(v)&&v>0){var sl=document.getElementById('sl-datarate');v=Math.min(parseFloat(sl.max),Math.max(parseFloat(sl.min),v));sl.value=v;updateFnyq();update()}});
+dri.addEventListener('keydown',function(e){if(e.key==='Enter'){this.dispatchEvent(new Event('change'));this.blur()}});
+
+function ctleM(f,p){var gm=p.gm*1e-3,csv=p.cs*1e-15,cpv=p.cp*1e-15;var wz=1/(p.rs*csv),wp1=(1+gm*p.rs/2)/(p.rs*csv),wp2=1/(p.rd*cpv);var w=2*Math.PI*f,dc=gm*p.rd/(1+gm*p.rs/2);return 10*Math.log10(dc*dc*(1+Math.pow(w/wz,2))/((1+Math.pow(w/wp1,2))*(1+Math.pow(w/wp2,2))))}
+function chL(f,loss){return -loss*Math.sqrt(f/FNYQ)}
+function gL(){return channelMode==='off'?0:channelMode==='custom'?customLoss:parseFloat(channelMode)}
+function fmtF(f){if(f>=1e9)return(f/1e9).toFixed(2)+' GHz';if(f>=1e6)return(f/1e6).toFixed(1)+' MHz';return(f/1e3).toFixed(0)+' kHz'}
+function cm(p){var gm=p.gm*1e-3,csv=p.cs*1e-15,cpv=p.cp*1e-15;var b=1+gm*p.rs/2;return{fz:1/(2*Math.PI*p.rs*csv),fp1:b/(2*Math.PI*p.rs*csv),fp2:1/(2*Math.PI*p.rd*cpv),boost:b,peakdB:20*Math.log10(b),dcG:20*Math.log10(gm*p.rd/b),pkG:20*Math.log10(gm*p.rd)}}
+
+function wm(m){
+  var ratio=m.fp1/FNYQ,rc='var(--text)';
+  if(ratio>.25&&ratio<.45)rc='var(--green)';else if(ratio<.15||ratio>.6)rc='var(--red)';else rc='var(--amber)';
+  document.getElementById('mv-fz').textContent=fmtF(m.fz);
+  document.getElementById('mv-fp1').textContent=fmtF(m.fp1);
+  document.getElementById('mv-fp2').textContent=fmtF(m.fp2);
+  document.getElementById('mv-peak').textContent=m.peakdB.toFixed(1)+' dB';
+  document.getElementById('mv-dc').textContent=m.dcG.toFixed(1)+' dB';
+  var re=document.getElementById('mv-ratio');re.textContent=ratio.toFixed(2);re.style.color=rc;
+  document.getElementById('bv-boost').textContent=m.boost.toFixed(2)+'x';
+  document.getElementById('bv-pkg').textContent=m.pkG.toFixed(1)+' dB';
+  document.getElementById('bv-gmrs').textContent=(m.boost-1).toFixed(2);
+  var w=document.getElementById('warn');
+  if(m.fp2<2*m.fp1){w.textContent='\u26A0  fp2 < 2\u00D7fp1 \u2014 gain compression likely';w.classList.add('visible')}else{w.classList.remove('visible')}
+}
+function wl(){
+  var h='<span><span class="ld" style="background:#58a6ff"></span>CTLE</span>';
+  if(channelMode!=='off'){var lb=channelMode==='custom'?customLoss:channelMode;h+='<span><span class="ldd" style="border-color:#f85149"></span>Channel ('+lb+' dB)</span>';if(document.getElementById('show-combo').checked)h+='<span><span class="ld" style="background:#3fb950"></span>Combined</span>'}
+  document.getElementById('legend').innerHTML=h;
+}
+function sc(){var dpr=window.devicePixelRatio||1;plotW=plotArea.clientWidth;plotH=plotArea.clientHeight;canvas.width=plotW*dpr;canvas.height=plotH*dpr;canvas.style.width=plotW+'px';canvas.style.height=plotH+'px';c.setTransform(dpr,0,0,dpr,0,0)}
+function tX(f){return PAD.l+((Math.log10(f)-LOGMIN)/(LOGMAX-LOGMIN))*(plotW-PAD.l-PAD.r)}
+function tY(db){return PAD.t+((YMAX-db)/(YMAX-YMIN))*(plotH-PAD.t-PAD.b)}
+
+function dp(p,m){
+  var W=plotW,H=plotH;
+  c.clearRect(0,0,W,H);c.fillStyle='#0e1117';c.fillRect(0,0,W,H);
+  c.strokeStyle='rgba(255,255,255,.04)';c.lineWidth=.5;
+  for(var db=YMIN;db<=YMAX;db+=5){c.beginPath();c.moveTo(PAD.l,tY(db));c.lineTo(W-PAD.r,tY(db));c.stroke()}
+  for(var e=6;e<=10;e++){var x=tX(Math.pow(10,e));c.beginPath();c.moveTo(x,PAD.t);c.lineTo(x,H-PAD.b);c.stroke();c.strokeStyle='rgba(255,255,255,.02)';for(var k=2;k<=9;k++){var xk=tX(k*Math.pow(10,e));if(xk>PAD.l&&xk<W-PAD.r){c.beginPath();c.moveTo(xk,PAD.t);c.lineTo(xk,H-PAD.b);c.stroke()}}c.strokeStyle='rgba(255,255,255,.04)'}
+  c.strokeStyle='rgba(255,255,255,.1)';c.lineWidth=1;c.setLineDash([]);c.beginPath();c.moveTo(PAD.l,tY(0));c.lineTo(W-PAD.r,tY(0));c.stroke();
+  c.fillStyle='rgba(255,255,255,.3)';c.font='10px system-ui,sans-serif';c.textAlign='right';
+  for(db=YMIN;db<=YMAX;db+=10)c.fillText(db+'',PAD.l-6,tY(db)+3);
+  c.textAlign='center';[[1e6,'1M'],[1e7,'10M'],[1e8,'100M'],[1e9,'1G'],[1e10,'10G']].forEach(function(a){c.fillText(a[1],tX(a[0]),H-PAD.b+16)});
+  c.fillStyle='rgba(255,255,255,.25)';c.font='11px system-ui,sans-serif';c.fillText('Frequency (Hz)',W/2,H-4);
+  c.save();c.translate(13,H/2);c.rotate(-Math.PI/2);c.fillText('Magnitude (dB)',0,0);c.restore();
+  if(document.getElementById('show-nyq').checked&&FNYQ>=FMIN&&FNYQ<=FMAX){var nx=tX(FNYQ);c.strokeStyle='rgba(88,166,255,.25)';c.lineWidth=1.5;c.setLineDash([5,4]);c.beginPath();c.moveTo(nx,PAD.t);c.lineTo(nx,H-PAD.b);c.stroke();c.setLineDash([]);c.fillStyle='rgba(88,166,255,.5)';c.font='9px system-ui,sans-serif';c.textAlign='center';c.fillText('fNyq = '+(FNYQ/1e9).toFixed(2)+' GHz',nx,PAD.t-4)}
+  if(document.getElementById('show-poles').checked){var mc2='rgba(210,153,34,.25)',mt='rgba(210,153,34,.6)';[{f:m.fz,l:'fz'},{f:m.fp1,l:'fp1'},{f:m.fp2,l:'fp2'}].forEach(function(o){if(o.f>=FMIN&&o.f<=FMAX){var x2=tX(o.f);c.strokeStyle=mc2;c.lineWidth=1;c.setLineDash([3,3]);c.beginPath();c.moveTo(x2,PAD.t);c.lineTo(x2,H-PAD.b);c.stroke();c.setLineDash([]);c.fillStyle=mt;c.font='9px system-ui,sans-serif';c.textAlign='center';c.fillText(o.l,x2,H-PAD.b+28)}})}
+  function tl(fn,col,w,dash){c.strokeStyle=col;c.lineWidth=w;c.setLineDash(dash||[]);c.beginPath();var s=false;for(var i=0;i<F.length;i++){var f2=F[i],d=fn(f2),x3=tX(f2),y=tY(Math.max(YMIN,Math.min(YMAX,d)));if(!s){c.moveTo(x3,y);s=true}else c.lineTo(x3,y)}c.stroke();c.setLineDash([])}
+  if(channelMode!=='off'){var loss=gL();tl(function(f){return chL(f,loss)},'#f85149',1.5,[6,3]);if(document.getElementById('show-combo').checked){c.save();c.shadowColor='rgba(63,185,80,.25)';c.shadowBlur=6;tl(function(f){return ctleM(f,p)+chL(f,loss)},'#3fb950',2.5,[]);c.restore()}}
+  c.save();c.shadowColor='rgba(88,166,255,.25)';c.shadowBlur=5;tl(function(f){return ctleM(f,p)},'#58a6ff',2,[]);c.restore();
+  // gain at fNyq readout
+  if(FNYQ>=FMIN&&FNYQ<=FMAX){
+    var gDb=ctleM(FNYQ,p),comboDb=null;
+    if(channelMode!=='off'){comboDb=gDb+chL(FNYQ,gL())}
+    var ftx=tX(FNYQ),fty=tY(Math.max(YMIN,Math.min(YMAX,gDb)));
+    // dot on CTLE curve at fNyq
+    c.fillStyle='#bb80ff';c.beginPath();c.arc(ftx,fty,4,0,2*Math.PI);c.fill();
+    c.fillStyle='#bb80ff';c.font='bold 10px system-ui,sans-serif';c.textAlign='left';
+    var readout=gDb.toFixed(1)+' dB';
+    if(comboDb!==null){
+      readout+='  (combined: '+comboDb.toFixed(1)+' dB)';
+      var ftyc=tY(Math.max(YMIN,Math.min(YMAX,comboDb)));
+      c.fillStyle='#3fb950';c.beginPath();c.arc(ftx,ftyc,4,0,2*Math.PI);c.fill();
+    }
+    c.fillStyle='#bb80ff';c.fillText(readout,ftx+8,fty-6);
+    var ftInfo=gDb.toFixed(1)+' dB';if(comboDb!==null)ftInfo+=' (combined: '+comboDb.toFixed(1)+' dB)';
+    document.getElementById('ft-gain').textContent=ftInfo;
+  }else{document.getElementById('ft-gain').textContent='—'}
+}
+
+canvas.addEventListener('mousemove',function(e){var rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left;if(!cachedP||x<PAD.l||x>plotW-PAD.r){document.getElementById('cursor-info').textContent='';return}var lf=LOGMIN+((x-PAD.l)/(plotW-PAD.l-PAD.r))*(LOGMAX-LOGMIN),f=Math.pow(10,lf),db=ctleM(f,cachedP),txt=fmtF(f)+'  CTLE: '+db.toFixed(1)+' dB';if(channelMode!=='off'){var loss=gL(),ch=chL(f,loss);txt+='  Ch: '+ch.toFixed(1)+' dB  Sum: '+(db+ch).toFixed(1)+' dB'}document.getElementById('cursor-info').textContent=txt});
+canvas.addEventListener('mouseleave',function(){document.getElementById('cursor-info').textContent=''});
+
+function update(){var p=ga();cachedP=p;var m=cm(p);wm(m);wl();dp(p,m)}
+function fullUpdate(){sc();update()}
+function setCh(mode){channelMode=mode;document.querySelectorAll('.btn-group .btn').forEach(function(b){b.classList.remove('active')});document.getElementById('ch-'+mode).classList.add('active');document.getElementById('custom-ch-row').style.display=mode==='custom'?'block':'none';update()}
+function setPreset(name){var pr={low:{gm:5,rs:600,cs:200,rd:400,cload:20,cpar:30},high:{gm:6.6,rs:1000,cs:250,rd:400,cload:20,cpar:30}}[name];PARAMS.forEach(function(id){document.getElementById('sl-'+id).value=pr[id];document.getElementById('in-'+id).value=pr[id]});if(name==='low')setCh('10');else if(name==='high')setCh('20');else update()}
+var STORE_KEY='ctle_saved_configs';
+function getSaved(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{}}catch(e){return{}}}
+function saveConfig(){
+  var name=document.getElementById('save-name').value.trim();
+  if(!name){document.getElementById('save-name').style.borderColor='var(--red)';setTimeout(function(){document.getElementById('save-name').style.borderColor='var(--border)'},1500);return}
+  var cfg={};PARAMS.forEach(function(id){cfg[id]=gv(id)});
+  cfg._ch=channelMode;cfg._chloss=customLoss;cfg._datarate=parseFloat(document.getElementById('sl-datarate').value);cfg._mod=modulation;cfg._ts=Date.now();
+  var all=getSaved();all[name]=cfg;localStorage.setItem(STORE_KEY,JSON.stringify(all));
+  document.getElementById('save-name').value='';renderSaved();
+}
+function loadConfig(name){
+  var all=getSaved(),cfg=all[name];if(!cfg)return;
+  PARAMS.forEach(function(id){if(cfg[id]!==undefined){document.getElementById('sl-'+id).value=cfg[id];document.getElementById('in-'+id).value=cfg[id]}});
+  if(cfg._chloss!==undefined){customLoss=cfg._chloss;document.getElementById('sl-chloss').value=customLoss;document.getElementById('in-chloss').value=customLoss}
+  if(cfg._datarate!==undefined){document.getElementById('sl-datarate').value=cfg._datarate;document.getElementById('in-datarate').value=cfg._datarate}
+  if(cfg._mod)setMod(cfg._mod);
+  updateFnyq();
+  if(cfg._ch)setCh(cfg._ch);else update();
+}
+function deleteConfig(name){
+  var all=getSaved();delete all[name];localStorage.setItem(STORE_KEY,JSON.stringify(all));renderSaved();
+}
+function renderSaved(){
+  var list=document.getElementById('saved-list'),all=getSaved(),keys=Object.keys(all);
+  list.innerHTML='';
+  if(!keys.length){list.innerHTML='<div style="font-size:10px;color:var(--text3);padding:2px 0">No saved configurations</div>';return}
+  keys.sort(function(a,b){return(all[b]._ts||0)-(all[a]._ts||0)});
+  keys.forEach(function(name){
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:4px';
+    var btn=document.createElement('button');btn.className='preset';btn.style.cssText='flex:1;text-align:left';btn.textContent=name;
+    btn.onclick=function(){loadConfig(name)};
+    var del=document.createElement('button');del.className='preset';del.style.cssText='color:var(--red);padding:3px 6px';del.textContent='✕';
+    del.title='Delete '+name;del.onclick=function(){deleteConfig(name)};
+    row.appendChild(btn);row.appendChild(del);list.appendChild(row);
+  });
+}
+renderSaved();
+window.addEventListener('resize',fullUpdate);
+fullUpdate();
+</script>
+</body>
+</html>
