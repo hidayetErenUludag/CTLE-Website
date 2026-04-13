@@ -132,7 +132,7 @@
   .plot-area{flex:1;overflow:hidden;position:relative}
   .plot-area canvas{position:absolute;top:0;left:0}
 
-  .bottom-cards{height:44px;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-top:1px solid var(--border);flex-shrink:0}
+  .bottom-cards{height:44px;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-top:1px solid var(--border);flex-shrink:0}
   .b-card{background:var(--surface);padding:4px 14px;display:flex;flex-direction:column;justify-content:center}
   .b-card .b-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;line-height:1.2}
   .b-card .b-val{font-size:14px;font-weight:600;font-family:var(--font);line-height:1.3}
@@ -192,10 +192,6 @@
     </div>
     <div style="font-size:10px;color:var(--text3);margin:2px 0 0 36px">f<sub>Nyq</sub> = <span id="fnyq-display">4.00</span> GHz</div>
     <div style="font-size:10px;color:var(--text3);margin:2px 0 0 36px">Gain @ f<sub>Nyq</sub> = <span id="ft-gain" style="color:var(--text2)">&mdash;</span></div>
-    <div class="sect tooltip" data-tip="Rough power estimate: P = gm/2 * VDS (per side, differential)">Power estimate</div>
-    <div class="param"><span class="p-lbl tooltip" data-tip="Drain-source voltage of diff pair">V<sub>DS</sub></span><input type="range" id="sl-vds" min="0.1" max="1.2" step="0.01" value="0.5"><input type="text" class="p-input" id="in-vds" value="0.5"><span class="p-unit">V</span></div>
-    <div class="param"><span class="p-lbl tooltip" data-tip="Supply voltage for total power">V<sub>DD</sub></span><input type="range" id="sl-vdd" min="0.5" max="1.8" step="0.01" value="1.0"><input type="text" class="p-input" id="in-vdd" value="1.0"><span class="p-unit">V</span></div>
-    <div style="font-size:10px;color:var(--text3);margin:2px 0 0 36px">I<sub>tail</sub> = <span id="pw-itail">&mdash;</span> &nbsp; P<sub>diff</sub> = <span id="pw-pdiff">&mdash;</span></div>
     <div class="check-row">
       <label><input type="checkbox" id="show-combo" checked onchange="update()"> Combined</label>
       <label><input type="checkbox" id="show-nyq" checked onchange="update()"> f<sub>Nyq</sub></label>
@@ -225,14 +221,13 @@
       <div class="b-card"><div class="b-lbl">Boost factor</div><div class="b-val" id="bv-boost">&mdash;</div></div>
       <div class="b-card"><div class="b-lbl">Peak gain</div><div class="b-val" id="bv-pkg">&mdash;</div></div>
       <div class="b-card"><div class="b-lbl">g<sub>m</sub>R<sub>S</sub>/2</div><div class="b-val" id="bv-gmrs">&mdash;</div></div>
-      <div class="b-card"><div class="b-lbl">Power (diff)</div><div class="b-val" id="bv-power">&mdash;</div></div>
     </div>
   </div>
 </div>
 <script>
 var FNYQ=4e9,modulation='nrz',channelMode='off',customLoss=15,plotW=0,plotH=0;
 var PARAMS=['gm','rs','cs','rd','cload','cpar'];
-var POWER_PARAMS=['vds','vdd'];
+
 var canvas=document.getElementById('bode'),c=canvas.getContext('2d'),plotArea=document.getElementById('plot-area');
 var F=(function(){var p=[];for(var e=5.5;e<=10.8;e+=.025)p.push(Math.pow(10,e));return p})();
 var PAD={t:16,r:52,b:40,l:52},FMIN=1e6,FMAX=5e10,YMIN=-40,YMAX=25;
@@ -243,7 +238,7 @@ var cachedP=null;
 var undoStack=[],redoStack=[],undoLock=false;
 function captureState(){
   var s={};PARAMS.forEach(function(id){s[id]=gv(id)});
-  POWER_PARAMS.forEach(function(id){s[id]=parseFloat(document.getElementById('sl-'+id).value)});
+
   s._ch=channelMode;s._chloss=customLoss;
   s._datarate=parseFloat(document.getElementById('sl-datarate').value);s._mod=modulation;
   return s;
@@ -251,7 +246,7 @@ function captureState(){
 function restoreState(s){
   undoLock=true;
   PARAMS.forEach(function(id){if(s[id]!==undefined){document.getElementById('sl-'+id).value=s[id];document.getElementById('in-'+id).value=s[id]}});
-  POWER_PARAMS.forEach(function(id){if(s[id]!==undefined){document.getElementById('sl-'+id).value=s[id];document.getElementById('in-'+id).value=s[id]}});
+
   if(s._datarate!==undefined){document.getElementById('sl-datarate').value=s._datarate;document.getElementById('in-datarate').value=s._datarate}
   if(s._mod)setMod(s._mod);
   if(s._chloss!==undefined){customLoss=s._chloss;document.getElementById('sl-chloss').value=customLoss;document.getElementById('in-chloss').value=customLoss}
@@ -285,12 +280,7 @@ PARAMS.forEach(function(id){
   inp.addEventListener('change',function(){f2s(id);update()});
   inp.addEventListener('keydown',function(e){if(e.key==='Enter'){f2s(id);update();inp.blur()}});
 });
-POWER_PARAMS.forEach(function(id){
-  document.getElementById('sl-'+id).addEventListener('input',function(){s2f(id);update()});
-  var inp=document.getElementById('in-'+id);
-  inp.addEventListener('change',function(){f2s(id);update()});
-  inp.addEventListener('keydown',function(e){if(e.key==='Enter'){f2s(id);update();inp.blur()}});
-});
+
 document.getElementById('sl-chloss').addEventListener('input',function(){document.getElementById('in-chloss').value=this.value;customLoss=parseFloat(this.value);update()});
 var cli=document.getElementById('in-chloss');
 cli.addEventListener('change',function(){var v=parseFloat(this.value);if(!isNaN(v)&&v>0){customLoss=v;document.getElementById('sl-chloss').value=v;update()}});
@@ -311,15 +301,7 @@ function gL(){return channelMode==='off'?0:channelMode==='custom'?customLoss:par
 function fmtF(f){if(f>=1e9)return(f/1e9).toFixed(2)+' GHz';if(f>=1e6)return(f/1e6).toFixed(1)+' MHz';return(f/1e3).toFixed(0)+' kHz'}
 function cm(p){var gm=p.gm*1e-3,csv=p.cs*1e-15,cpv=p.cp*1e-15;var b=1+gm*p.rs/2;return{fz:1/(2*Math.PI*p.rs*csv),fp1:b/(2*Math.PI*p.rs*csv),fp2:1/(2*Math.PI*p.rd*cpv),boost:b,peakdB:20*Math.log10(b),dcG:20*Math.log10(gm*p.rd/b),pkG:20*Math.log10(gm*p.rd)}}
 
-// --- Power estimate ---
-function calcPower(){
-  var gm=gv('gm'),vds=parseFloat(document.getElementById('sl-vds').value),vdd=parseFloat(document.getElementById('sl-vdd').value);
-  var itail=gm; // gm in mS, itail ~ gm (mA) rough estimate for diff pair
-  var pdiff=itail*vdd; // mW
-  document.getElementById('pw-itail').textContent=itail.toFixed(2)+' mA';
-  document.getElementById('pw-pdiff').textContent=pdiff.toFixed(2)+' mW';
-  document.getElementById('bv-power').textContent=pdiff.toFixed(1)+' mW';
-}
+
 
 function wm(m){
   var ratio=m.fp1/FNYQ,rc='var(--text)';
@@ -398,7 +380,7 @@ function dp(p,m){
 canvas.addEventListener('mousemove',function(e){var rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left;if(!cachedP||x<PAD.l||x>plotW-PAD.r){document.getElementById('cursor-info').textContent='';return}var lf=LOGMIN+((x-PAD.l)/(plotW-PAD.l-PAD.r))*(LOGMAX-LOGMIN),f=Math.pow(10,lf),db=ctleM(f,cachedP),txt=fmtF(f)+'  CTLE: '+db.toFixed(1)+' dB';if(document.getElementById('show-phase').checked){txt+='  \u2220'+ctlePhase(f,cachedP).toFixed(1)+'\u00B0'}if(channelMode!=='off'){var loss=gL(),ch=chL(f,loss);txt+='  Ch: '+ch.toFixed(1)+' dB  Sum: '+(db+ch).toFixed(1)+' dB'}document.getElementById('cursor-info').textContent=txt});
 canvas.addEventListener('mouseleave',function(){document.getElementById('cursor-info').textContent=''});
 
-function update(){var p=ga();cachedP=p;var m=cm(p);wm(m);wl();calcPower();dp(p,m);pushUndo()}
+function update(){var p=ga();cachedP=p;var m=cm(p);wm(m);wl();dp(p,m);pushUndo()}
 function fullUpdate(){sc();update()}
 function setCh(mode){channelMode=mode;document.querySelectorAll('.btn-group .btn').forEach(function(b){b.classList.remove('active')});document.getElementById('ch-'+mode).classList.add('active');document.getElementById('custom-ch-row').style.display=mode==='custom'?'block':'none';update()}
 function setPreset(name){var pr={low:{gm:5,rs:600,cs:200,rd:400,cload:20,cpar:30},high:{gm:6.6,rs:1000,cs:250,rd:400,cload:20,cpar:30}}[name];PARAMS.forEach(function(id){document.getElementById('sl-'+id).value=pr[id];document.getElementById('in-'+id).value=pr[id]});if(name==='low')setCh('10');else if(name==='high')setCh('20');else update()}
@@ -409,16 +391,14 @@ function encodeURL(){
   h.push('rate='+document.getElementById('sl-datarate').value);
   h.push('mod='+modulation);h.push('ch='+channelMode);
   if(channelMode==='custom')h.push('chloss='+customLoss);
-  h.push('vds='+document.getElementById('sl-vds').value);
-  h.push('vdd='+document.getElementById('sl-vdd').value);
+
   return window.location.origin+window.location.pathname+'#'+h.join('&');
 }
 function decodeURL(){
   var hash=window.location.hash.slice(1);if(!hash)return;
   var params={};hash.split('&').forEach(function(pair){var kv=pair.split('=');if(kv.length===2)params[kv[0]]=kv[1]});
   PARAMS.forEach(function(id){if(params[id]!==undefined){document.getElementById('sl-'+id).value=params[id];document.getElementById('in-'+id).value=params[id]}});
-  if(params.vds){document.getElementById('sl-vds').value=params.vds;document.getElementById('in-vds').value=params.vds}
-  if(params.vdd){document.getElementById('sl-vdd').value=params.vdd;document.getElementById('in-vdd').value=params.vdd}
+
   if(params.rate){document.getElementById('sl-datarate').value=params.rate;document.getElementById('in-datarate').value=params.rate}
   if(params.mod)setMod(params.mod);
   if(params.chloss){customLoss=parseFloat(params.chloss);document.getElementById('sl-chloss').value=customLoss;document.getElementById('in-chloss').value=customLoss}
@@ -460,7 +440,6 @@ function saveConfig(){
   if(!name){document.getElementById('save-name').style.borderColor='var(--red)';setTimeout(function(){document.getElementById('save-name').style.borderColor='var(--border)'},1500);return}
   var cfg={};PARAMS.forEach(function(id){cfg[id]=gv(id)});
   cfg._ch=channelMode;cfg._chloss=customLoss;cfg._datarate=parseFloat(document.getElementById('sl-datarate').value);cfg._mod=modulation;cfg._ts=Date.now();
-  cfg._vds=parseFloat(document.getElementById('sl-vds').value);cfg._vdd=parseFloat(document.getElementById('sl-vdd').value);
   var all=getSaved();all[name]=cfg;localStorage.setItem(STORE_KEY,JSON.stringify(all));
   document.getElementById('save-name').value='';renderSaved();
 }
@@ -469,8 +448,6 @@ function loadConfig(name){
   PARAMS.forEach(function(id){if(cfg[id]!==undefined){document.getElementById('sl-'+id).value=cfg[id];document.getElementById('in-'+id).value=cfg[id]}});
   if(cfg._chloss!==undefined){customLoss=cfg._chloss;document.getElementById('sl-chloss').value=customLoss;document.getElementById('in-chloss').value=customLoss}
   if(cfg._datarate!==undefined){document.getElementById('sl-datarate').value=cfg._datarate;document.getElementById('in-datarate').value=cfg._datarate}
-  if(cfg._vds!==undefined){document.getElementById('sl-vds').value=cfg._vds;document.getElementById('in-vds').value=cfg._vds}
-  if(cfg._vdd!==undefined){document.getElementById('sl-vdd').value=cfg._vdd;document.getElementById('in-vdd').value=cfg._vdd}
   if(cfg._mod)setMod(cfg._mod);
   updateFnyq();
   if(cfg._ch)setCh(cfg._ch);else update();
