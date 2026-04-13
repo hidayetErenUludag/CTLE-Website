@@ -20,7 +20,55 @@
     --amber: #d29922;
     --font: 'SF Mono','Cascadia Code','JetBrains Mono','Fira Code',Consolas,monospace;
     --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+    --plot-bg: #0e1117;
+    --plot-grid: rgba(255,255,255,.04);
+    --plot-grid2: rgba(255,255,255,.02);
+    --plot-zero: rgba(255,255,255,.1);
+    --plot-label: rgba(255,255,255,.3);
+    --plot-label2: rgba(255,255,255,.25);
+    --plot-ctle: #58a6ff;
+    --plot-ctle-glow: rgba(88,166,255,.25);
+    --plot-ch: #f85149;
+    --plot-combo: #3fb950;
+    --plot-combo-glow: rgba(63,185,80,.25);
+    --plot-nyq: rgba(88,166,255,.25);
+    --plot-nyq-label: rgba(88,166,255,.5);
+    --plot-pole: rgba(210,153,34,.25);
+    --plot-pole-label: rgba(210,153,34,.6);
+    --plot-marker: #bb80ff;
   }
+  [data-theme="light"] {
+    --bg: #ffffff;
+    --surface: #f6f8fa;
+    --surface2: #eaeef2;
+    --border: #d0d7de;
+    --border-hi: #afb8c1;
+    --text: #1f2328;
+    --text2: #57606a;
+    --text3: #8b949e;
+    --accent: #0969da;
+    --green: #1a7f37;
+    --red: #cf222e;
+    --amber: #9a6700;
+    --plot-bg: #ffffff;
+    --plot-grid: rgba(0,0,0,.07);
+    --plot-grid2: rgba(0,0,0,.03);
+    --plot-zero: rgba(0,0,0,.15);
+    --plot-label: rgba(0,0,0,.45);
+    --plot-label2: rgba(0,0,0,.35);
+    --plot-ctle: #0969da;
+    --plot-ctle-glow: rgba(9,105,218,.2);
+    --plot-ch: #cf222e;
+    --plot-combo: #1a7f37;
+    --plot-combo-glow: rgba(26,127,55,.2);
+    --plot-nyq: rgba(9,105,218,.3);
+    --plot-nyq-label: rgba(9,105,218,.6);
+    --plot-pole: rgba(154,103,0,.3);
+    --plot-pole-label: rgba(154,103,0,.7);
+    --plot-marker: #8250df;
+  }
+  .theme-toggle{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px;line-height:1;color:var(--text2);transition:all .15s}
+  .theme-toggle:hover{background:var(--surface2);border-color:var(--border-hi)}
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;overflow:hidden}
   body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5}
@@ -89,7 +137,7 @@
 </style>
 </head>
 <body>
-<div class="header"><h1><span>CTLE</span> Designer</h1><div class="sub">PCIe 3.0 · 8 Gbps · f<sub>Nyq</sub> = 4 GHz</div></div>
+<div class="header"><h1><span>CTLE</span> Designer</h1><div style="display:flex;align-items:center;gap:12px"><div class="sub">PCIe 3.0 · 8 Gbps · f<sub>Nyq</sub> = 4 GHz</div><button class="theme-toggle" id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button></div></div>
 <div class="metrics-bar">
   <div class="m-card"><div class="m-label">f<sub>z</sub></div><div class="m-val" id="mv-fz">—</div></div>
   <div class="m-card"><div class="m-label">f<sub>p1</sub></div><div class="m-val" id="mv-fp1">—</div></div>
@@ -209,9 +257,10 @@ function wm(m){
   var w=document.getElementById('warn');
   if(m.fp2<2*m.fp1){w.textContent='\u26A0  fp2 < 2\u00D7fp1 \u2014 gain compression likely';w.classList.add('visible')}else{w.classList.remove('visible')}
 }
+function cv(name){return getComputedStyle(document.documentElement).getPropertyValue(name).trim()}
 function wl(){
-  var h='<span><span class="ld" style="background:#58a6ff"></span>CTLE</span>';
-  if(channelMode!=='off'){var lb=channelMode==='custom'?customLoss:channelMode;h+='<span><span class="ldd" style="border-color:#f85149"></span>Channel ('+lb+' dB)</span>';if(document.getElementById('show-combo').checked)h+='<span><span class="ld" style="background:#3fb950"></span>Combined</span>'}
+  var h='<span><span class="ld" style="background:'+cv('--plot-ctle')+'"></span>CTLE</span>';
+  if(channelMode!=='off'){var lb=channelMode==='custom'?customLoss:channelMode;h+='<span><span class="ldd" style="border-color:'+cv('--plot-ch')+'"></span>Channel ('+lb+' dB)</span>';if(document.getElementById('show-combo').checked)h+='<span><span class="ld" style="background:'+cv('--plot-combo')+'"></span>Combined</span>'}
   document.getElementById('legend').innerHTML=h;
 }
 function sc(){var dpr=window.devicePixelRatio||1;plotW=plotArea.clientWidth;plotH=plotArea.clientHeight;canvas.width=plotW*dpr;canvas.height=plotH*dpr;canvas.style.width=plotW+'px';canvas.style.height=plotH+'px';c.setTransform(dpr,0,0,dpr,0,0)}
