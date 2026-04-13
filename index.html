@@ -4,7 +4,7 @@
 <meta name="google-site-verification" content="qJZhmABqckDXPz1qh9wc2YixCuDx0LQBg3Pm7RszB6k" />
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CTLE Designer — PCIe 3.0</title>
+<title>CTLE Designer</title>
 <style>
   :root {
     --bg: #0e1117;
@@ -37,6 +37,7 @@
     --plot-pole: rgba(210,153,34,.25);
     --plot-pole-label: rgba(210,153,34,.6);
     --plot-marker: #bb80ff;
+    --plot-phase: #e791f5;
   }
   [data-theme="light"] {
     --bg: #ffffff;
@@ -67,6 +68,7 @@
     --plot-pole: rgba(154,103,0,.3);
     --plot-pole-label: rgba(154,103,0,.7);
     --plot-marker: #8250df;
+    --plot-phase: #a855f7;
   }
   .theme-toggle{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:16px;line-height:1;color:var(--text2);transition:all .15s}
   .theme-toggle:hover{background:var(--surface2);border-color:var(--border-hi)}
@@ -78,6 +80,7 @@
   .header h1{font-size:16px;font-weight:600}
   .header h1 span{color:var(--accent)}
   .header .sub{font-size:12px;color:var(--text3)}
+  .hdr-right{display:flex;align-items:center;gap:6px}
 
   .metrics-bar{height:58px;display:flex;gap:1px;background:var(--border);border-bottom:1px solid var(--border);flex-shrink:0}
   .m-card{flex:1;background:var(--surface);padding:8px 14px;display:flex;flex-direction:column;justify-content:center}
@@ -129,37 +132,51 @@
   .plot-area{flex:1;overflow:hidden;position:relative}
   .plot-area canvas{position:absolute;top:0;left:0}
 
-  .bottom-cards{height:44px;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-top:1px solid var(--border);flex-shrink:0}
+  .bottom-cards{height:44px;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-top:1px solid var(--border);flex-shrink:0}
   .b-card{background:var(--surface);padding:4px 14px;display:flex;flex-direction:column;justify-content:center}
   .b-card .b-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;line-height:1.2}
   .b-card .b-val{font-size:14px;font-weight:600;font-family:var(--font);line-height:1.3}
+
+  .tooltip{position:relative;cursor:help}
+  .tooltip::after{content:attr(data-tip);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:10px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:10;font-family:var(--sans);font-weight:400;letter-spacing:0;text-transform:none}
+  .tooltip:hover::after{opacity:1}
 
   @media(max-width:768px){.body-wrap{grid-template-columns:1fr;grid-template-rows:auto 1fr}.sidebar{border-right:none;border-bottom:1px solid var(--border);max-height:45vh}}
 </style>
 </head>
 <body>
-<div class="header"><h1><span>CTLE</span> Designer</h1><button class="theme-toggle" id="theme-btn" title="Toggle light/dark mode">🌙</button></div>
+<div class="header">
+  <h1><span>CTLE</span> Designer</h1>
+  <div class="hdr-right">
+    <button class="preset" id="btn-undo" title="Undo (Ctrl+Z)" disabled>&#x21A9;</button>
+    <button class="preset" id="btn-redo" title="Redo (Ctrl+Y)" disabled>&#x21AA;</button>
+    <button class="preset" id="btn-share" title="Copy shareable link">&#x1F517; Share</button>
+    <button class="preset" id="btn-png" title="Export plot as PNG">&#x1F4F7; PNG</button>
+    <button class="preset" id="btn-csv" title="Export data as CSV">&#x1F4C4; CSV</button>
+    <button class="theme-toggle" id="theme-btn" title="Toggle light/dark mode">&#x1F319;</button>
+  </div>
+</div>
 <div class="metrics-bar">
-  <div class="m-card"><div class="m-label">f<sub>z</sub></div><div class="m-val" id="mv-fz">—</div></div>
-  <div class="m-card"><div class="m-label">f<sub>p1</sub></div><div class="m-val" id="mv-fp1">—</div></div>
-  <div class="m-card"><div class="m-label">f<sub>p2</sub></div><div class="m-val" id="mv-fp2">—</div></div>
-  <div class="m-card"><div class="m-label">Peaking</div><div class="m-val" id="mv-peak">—</div></div>
-  <div class="m-card"><div class="m-label">DC gain</div><div class="m-val" id="mv-dc">—</div></div>
-  <div class="m-card"><div class="m-label">f<sub>p1</sub>/f<sub>Nyq</sub></div><div class="m-val" id="mv-ratio">—</div></div>
+  <div class="m-card"><div class="m-label">f<sub>z</sub></div><div class="m-val" id="mv-fz">&mdash;</div></div>
+  <div class="m-card"><div class="m-label">f<sub>p1</sub></div><div class="m-val" id="mv-fp1">&mdash;</div></div>
+  <div class="m-card"><div class="m-label">f<sub>p2</sub></div><div class="m-val" id="mv-fp2">&mdash;</div></div>
+  <div class="m-card"><div class="m-label">Peaking</div><div class="m-val" id="mv-peak">&mdash;</div></div>
+  <div class="m-card"><div class="m-label">DC gain</div><div class="m-val" id="mv-dc">&mdash;</div></div>
+  <div class="m-card"><div class="m-label">f<sub>p1</sub>/f<sub>Nyq</sub></div><div class="m-val" id="mv-ratio">&mdash;</div></div>
 </div>
 <div class="warn-bar" id="warn"> </div>
 <div class="body-wrap">
   <div class="sidebar">
-    <div class="sect">Transistor & degeneration</div>
-    <div class="param"><span class="p-lbl">g<sub>m</sub></span><input type="range" id="sl-gm" min="0.5" max="30" step="0.1" value="6.61"><input type="text" class="p-input" id="in-gm" value="6.61"><span class="p-unit">mS</span></div>
-    <div class="param"><span class="p-lbl">R<sub>S</sub></span><input type="range" id="sl-rs" min="50" max="5000" step="10" value="1000"><input type="text" class="p-input" id="in-rs" value="1000"><span class="p-unit">Ω</span></div>
-    <div class="param"><span class="p-lbl">C<sub>S</sub></span><input type="range" id="sl-cs" min="10" max="1000" step="5" value="250"><input type="text" class="p-input" id="in-cs" value="250"><span class="p-unit">fF</span></div>
-    <div class="sect">Output load</div>
-    <div class="param"><span class="p-lbl">R<sub>D</sub></span><input type="range" id="sl-rd" min="50" max="2000" step="10" value="400"><input type="text" class="p-input" id="in-rd" value="400"><span class="p-unit">Ω</span></div>
-    <div class="param"><span class="p-lbl">C<sub>load</sub></span><input type="range" id="sl-cload" min="0" max="100" step="1" value="20"><input type="text" class="p-input" id="in-cload" value="20"><span class="p-unit">fF</span></div>
-    <div class="param"><span class="p-lbl">C<sub>par</sub></span><input type="range" id="sl-cpar" min="0" max="200" step="1" value="30"><input type="text" class="p-input" id="in-cpar" value="30"><span class="p-unit">fF</span></div>
+    <div class="sect tooltip" data-tip="Differential pair transconductance and source degeneration">Transistor &amp; degeneration</div>
+    <div class="param"><span class="p-lbl tooltip" data-tip="Transconductance of each diff-pair transistor">g<sub>m</sub></span><input type="range" id="sl-gm" min="0.5" max="30" step="0.1" value="6.61"><input type="text" class="p-input" id="in-gm" value="6.61"><span class="p-unit">mS</span></div>
+    <div class="param"><span class="p-lbl tooltip" data-tip="Source degeneration resistance &mdash; sets the zero frequency with CS">R<sub>S</sub></span><input type="range" id="sl-rs" min="50" max="5000" step="10" value="1000"><input type="text" class="p-input" id="in-rs" value="1000"><span class="p-unit">&Omega;</span></div>
+    <div class="param"><span class="p-lbl tooltip" data-tip="Source degeneration capacitance &mdash; bypasses RS at high freq to create peaking">C<sub>S</sub></span><input type="range" id="sl-cs" min="10" max="1000" step="5" value="250"><input type="text" class="p-input" id="in-cs" value="250"><span class="p-unit">fF</span></div>
+    <div class="sect tooltip" data-tip="Drain load resistor and total output capacitance">Output load</div>
+    <div class="param"><span class="p-lbl tooltip" data-tip="Drain load resistance &mdash; sets DC gain and output pole">R<sub>D</sub></span><input type="range" id="sl-rd" min="50" max="2000" step="10" value="400"><input type="text" class="p-input" id="in-rd" value="400"><span class="p-unit">&Omega;</span></div>
+    <div class="param"><span class="p-lbl tooltip" data-tip="Spec-mandated load capacitance (e.g. 20 fF for PCIe)">C<sub>load</sub></span><input type="range" id="sl-cload" min="0" max="100" step="1" value="20"><input type="text" class="p-input" id="in-cload" value="20"><span class="p-unit">fF</span></div>
+    <div class="param"><span class="p-lbl tooltip" data-tip="Parasitic capacitance: Cdb + Cgd + wiring &mdash; estimate from layout or Virtuoso">C<sub>par</sub></span><input type="range" id="sl-cpar" min="0" max="200" step="1" value="30"><input type="text" class="p-input" id="in-cpar" value="30"><span class="p-unit">fF</span></div>
     <div style="font-size:10px;color:var(--text3);margin:2px 0 0 36px">C<sub>P</sub> = C<sub>load</sub> + C<sub>par</sub> = <span id="cp-total">50</span> fF</div>
-    <div class="sect">Channel overlay</div>
+    <div class="sect tooltip" data-tip="Overlay a simple sqrt(f) channel loss model">Channel overlay</div>
     <div class="btn-group">
       <button class="btn active" id="ch-off" onclick="setCh('off')">Off</button>
       <button class="btn" id="ch-10" onclick="setCh('10')">10 dB</button>
@@ -167,18 +184,23 @@
       <button class="btn" id="ch-custom" onclick="setCh('custom')">Custom</button>
     </div>
     <div id="custom-ch-row" style="display:none;margin-top:4px"><div class="param"><span class="p-lbl">Loss</span><input type="range" id="sl-chloss" min="1" max="40" step="0.5" value="15"><input type="text" class="p-input" id="in-chloss" value="15"><span class="p-unit">dB</span></div></div>
-    <div class="sect">Data rate &amp; Nyquist</div>
-    <div class="param"><span class="p-lbl">Rate</span><input type="range" id="sl-datarate" min="1" max="120" step="0.5" value="8"><input type="text" class="p-input" id="in-datarate" value="8"><span class="p-unit">Gbps</span></div>
+    <div class="sect tooltip" data-tip="Set data rate to compute fNyq. NRZ: fNyq=Rate/2, PAM4: fNyq=Rate/4">Data rate &amp; Nyquist</div>
+    <div class="param"><span class="p-lbl tooltip" data-tip="Line data rate">Rate</span><input type="range" id="sl-datarate" min="1" max="120" step="0.5" value="8"><input type="text" class="p-input" id="in-datarate" value="8"><span class="p-unit">Gbps</span></div>
     <div class="btn-group" style="margin-bottom:4px">
       <button class="btn active" id="mod-nrz" onclick="setMod('nrz')">NRZ</button>
       <button class="btn" id="mod-pam4" onclick="setMod('pam4')">PAM4</button>
     </div>
     <div style="font-size:10px;color:var(--text3);margin:2px 0 0 36px">f<sub>Nyq</sub> = <span id="fnyq-display">4.00</span> GHz</div>
-    <div style="font-size:10px;color:var(--text3);margin:2px 0 0 36px">Gain @ f<sub>Nyq</sub> = <span id="ft-gain" style="color:var(--text2)">—</span></div>
+    <div style="font-size:10px;color:var(--text3);margin:2px 0 0 36px">Gain @ f<sub>Nyq</sub> = <span id="ft-gain" style="color:var(--text2)">&mdash;</span></div>
+    <div class="sect tooltip" data-tip="Rough power estimate: P = gm/2 * VDS (per side, differential)">Power estimate</div>
+    <div class="param"><span class="p-lbl tooltip" data-tip="Drain-source voltage of diff pair">V<sub>DS</sub></span><input type="range" id="sl-vds" min="0.1" max="1.2" step="0.01" value="0.5"><input type="text" class="p-input" id="in-vds" value="0.5"><span class="p-unit">V</span></div>
+    <div class="param"><span class="p-lbl tooltip" data-tip="Supply voltage for total power">V<sub>DD</sub></span><input type="range" id="sl-vdd" min="0.5" max="1.8" step="0.01" value="1.0"><input type="text" class="p-input" id="in-vdd" value="1.0"><span class="p-unit">V</span></div>
+    <div style="font-size:10px;color:var(--text3);margin:2px 0 0 36px">I<sub>tail</sub> = <span id="pw-itail">&mdash;</span> &nbsp; P<sub>diff</sub> = <span id="pw-pdiff">&mdash;</span></div>
     <div class="check-row">
       <label><input type="checkbox" id="show-combo" checked onchange="update()"> Combined</label>
       <label><input type="checkbox" id="show-nyq" checked onchange="update()"> f<sub>Nyq</sub></label>
       <label><input type="checkbox" id="show-poles" checked onchange="update()"> Poles/zeros</label>
+      <label><input type="checkbox" id="show-phase" onchange="update()"> Phase</label>
     </div>
     <div class="sect">Presets</div>
     <div class="preset-row">
@@ -187,39 +209,83 @@
     </div>
     <div class="sect">Saved configurations</div>
     <div style="display:flex;gap:4px;margin-bottom:4px">
-      <input type="text" id="save-name" placeholder="Config name…" style="flex:1;font-size:11px;font-family:var(--sans);padding:3px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text)">
-      <button class="preset" onclick="saveConfig()" style="white-space:nowrap">💾 Save</button>
+      <input type="text" id="save-name" placeholder="Config name..." style="flex:1;font-size:11px;font-family:var(--sans);padding:3px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text)">
+      <button class="preset" onclick="saveConfig()" style="white-space:nowrap">&#x1F4BE; Save</button>
     </div>
     <div id="saved-list" style="display:flex;flex-direction:column;gap:3px"></div>
     <div class="ref-box">
       <div class="r-title">Transfer function</div>
-      <div class="r-eq">f<sub>z</sub> = 1/(2πR<sub>S</sub>C<sub>S</sub>)<br>f<sub>p1</sub> = (1+g<sub>m</sub>R<sub>S</sub>/2)·f<sub>z</sub><br>f<sub>p2</sub> = 1/(2πR<sub>D</sub>C<sub>P</sub>)<br><span style="color:var(--text3);font-size:11px">Target: f<sub>p1</sub>/f<sub>Nyq</sub> ≈ 0.33</span></div>
+      <div class="r-eq">f<sub>z</sub> = 1/(2&pi;R<sub>S</sub>C<sub>S</sub>)<br>f<sub>p1</sub> = (1+g<sub>m</sub>R<sub>S</sub>/2)&middot;f<sub>z</sub><br>f<sub>p2</sub> = 1/(2&pi;R<sub>D</sub>C<sub>P</sub>)<br><span style="color:var(--text3);font-size:11px">Target: f<sub>p1</sub>/f<sub>Nyq</sub> &asymp; 0.33</span></div>
     </div>
   </div>
   <div class="main">
     <div class="plot-header"><div class="legend" id="legend"></div><div style="font-size:10px;color:var(--text3);font-family:var(--font)" id="cursor-info"></div></div>
     <div class="plot-area" id="plot-area"><canvas id="bode"></canvas></div>
     <div class="bottom-cards">
-      <div class="b-card"><div class="b-lbl">Boost factor</div><div class="b-val" id="bv-boost">—</div></div>
-      <div class="b-card"><div class="b-lbl">Peak gain</div><div class="b-val" id="bv-pkg">—</div></div>
-      <div class="b-card"><div class="b-lbl">g<sub>m</sub>R<sub>S</sub>/2</div><div class="b-val" id="bv-gmrs">—</div></div>
+      <div class="b-card"><div class="b-lbl">Boost factor</div><div class="b-val" id="bv-boost">&mdash;</div></div>
+      <div class="b-card"><div class="b-lbl">Peak gain</div><div class="b-val" id="bv-pkg">&mdash;</div></div>
+      <div class="b-card"><div class="b-lbl">g<sub>m</sub>R<sub>S</sub>/2</div><div class="b-val" id="bv-gmrs">&mdash;</div></div>
+      <div class="b-card"><div class="b-lbl">Power (diff)</div><div class="b-val" id="bv-power">&mdash;</div></div>
     </div>
   </div>
 </div>
 <script>
 var FNYQ=4e9,modulation='nrz',channelMode='off',customLoss=15,plotW=0,plotH=0;
 var PARAMS=['gm','rs','cs','rd','cload','cpar'];
+var POWER_PARAMS=['vds','vdd'];
 var canvas=document.getElementById('bode'),c=canvas.getContext('2d'),plotArea=document.getElementById('plot-area');
 var F=(function(){var p=[];for(var e=5.5;e<=10.8;e+=.025)p.push(Math.pow(10,e));return p})();
-var PAD={t:16,r:20,b:40,l:52},FMIN=1e6,FMAX=5e10,YMIN=-40,YMAX=25;
+var PAD={t:16,r:52,b:40,l:52},FMIN=1e6,FMAX=5e10,YMIN=-40,YMAX=25;
 var LOGMIN=Math.log10(FMIN),LOGMAX=Math.log10(FMAX);
 var cachedP=null;
 
+// --- Undo/Redo ---
+var undoStack=[],redoStack=[],undoLock=false;
+function captureState(){
+  var s={};PARAMS.forEach(function(id){s[id]=gv(id)});
+  POWER_PARAMS.forEach(function(id){s[id]=parseFloat(document.getElementById('sl-'+id).value)});
+  s._ch=channelMode;s._chloss=customLoss;
+  s._datarate=parseFloat(document.getElementById('sl-datarate').value);s._mod=modulation;
+  return s;
+}
+function restoreState(s){
+  undoLock=true;
+  PARAMS.forEach(function(id){if(s[id]!==undefined){document.getElementById('sl-'+id).value=s[id];document.getElementById('in-'+id).value=s[id]}});
+  POWER_PARAMS.forEach(function(id){if(s[id]!==undefined){document.getElementById('sl-'+id).value=s[id];document.getElementById('in-'+id).value=s[id]}});
+  if(s._datarate!==undefined){document.getElementById('sl-datarate').value=s._datarate;document.getElementById('in-datarate').value=s._datarate}
+  if(s._mod)setMod(s._mod);
+  if(s._chloss!==undefined){customLoss=s._chloss;document.getElementById('sl-chloss').value=customLoss;document.getElementById('in-chloss').value=customLoss}
+  updateFnyq();
+  if(s._ch)setCh(s._ch);else update();
+  undoLock=false;
+  updateUndoButtons();
+}
+function pushUndo(){
+  if(undoLock)return;
+  var s=captureState();
+  if(undoStack.length>0){var last=undoStack[undoStack.length-1];if(JSON.stringify(last)===JSON.stringify(s))return}
+  undoStack.push(s);if(undoStack.length>50)undoStack.shift();
+  redoStack=[];updateUndoButtons();
+}
+function doUndo(){if(undoStack.length<2)return;redoStack.push(undoStack.pop());restoreState(undoStack[undoStack.length-1])}
+function doRedo(){if(!redoStack.length)return;var s=redoStack.pop();undoStack.push(s);restoreState(s)}
+function updateUndoButtons(){document.getElementById('btn-undo').disabled=undoStack.length<2;document.getElementById('btn-redo').disabled=!redoStack.length}
+document.getElementById('btn-undo').addEventListener('click',doUndo);
+document.getElementById('btn-redo').addEventListener('click',doRedo);
+document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){e.preventDefault();doUndo()}if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){e.preventDefault();doRedo()}});
+
+// --- Core param helpers ---
 function gv(id){return parseFloat(document.getElementById('sl-'+id).value)}
 function ga(){var cl=gv('cload'),cr=gv('cpar');document.getElementById('cp-total').textContent=(cl+cr).toFixed(0);return{gm:gv('gm'),rs:gv('rs'),cs:gv('cs'),rd:gv('rd'),cp:cl+cr}}
 function s2f(id){document.getElementById('in-'+id).value=document.getElementById('sl-'+id).value}
 function f2s(id){var v=parseFloat(document.getElementById('in-'+id).value);if(!isNaN(v)){var sl=document.getElementById('sl-'+id);var cl=Math.min(parseFloat(sl.max),Math.max(parseFloat(sl.min),v));sl.value=cl;document.getElementById('in-'+id).value=parseFloat(cl.toPrecision(6))}}
 PARAMS.forEach(function(id){
+  document.getElementById('sl-'+id).addEventListener('input',function(){s2f(id);update()});
+  var inp=document.getElementById('in-'+id);
+  inp.addEventListener('change',function(){f2s(id);update()});
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter'){f2s(id);update();inp.blur()}});
+});
+POWER_PARAMS.forEach(function(id){
   document.getElementById('sl-'+id).addEventListener('input',function(){s2f(id);update()});
   var inp=document.getElementById('in-'+id);
   inp.addEventListener('change',function(){f2s(id);update()});
@@ -237,11 +303,23 @@ var dri=document.getElementById('in-datarate');
 dri.addEventListener('change',function(){var v=parseFloat(this.value);if(!isNaN(v)&&v>0){var sl=document.getElementById('sl-datarate');v=Math.min(parseFloat(sl.max),Math.max(parseFloat(sl.min),v));sl.value=v;updateFnyq();update()}});
 dri.addEventListener('keydown',function(e){if(e.key==='Enter'){this.dispatchEvent(new Event('change'));this.blur()}});
 
+// --- CTLE magnitude & phase ---
 function ctleM(f,p){var gm=p.gm*1e-3,csv=p.cs*1e-15,cpv=p.cp*1e-15;var wz=1/(p.rs*csv),wp1=(1+gm*p.rs/2)/(p.rs*csv),wp2=1/(p.rd*cpv);var w=2*Math.PI*f,dc=gm*p.rd/(1+gm*p.rs/2);return 10*Math.log10(dc*dc*(1+Math.pow(w/wz,2))/((1+Math.pow(w/wp1,2))*(1+Math.pow(w/wp2,2))))}
+function ctlePhase(f,p){var gm=p.gm*1e-3,csv=p.cs*1e-15,cpv=p.cp*1e-15;var wz=1/(p.rs*csv),wp1=(1+gm*p.rs/2)/(p.rs*csv),wp2=1/(p.rd*cpv);var w=2*Math.PI*f;return(Math.atan(w/wz)-Math.atan(w/wp1)-Math.atan(w/wp2))*(180/Math.PI)}
 function chL(f,loss){return -loss*Math.sqrt(f/FNYQ)}
 function gL(){return channelMode==='off'?0:channelMode==='custom'?customLoss:parseFloat(channelMode)}
 function fmtF(f){if(f>=1e9)return(f/1e9).toFixed(2)+' GHz';if(f>=1e6)return(f/1e6).toFixed(1)+' MHz';return(f/1e3).toFixed(0)+' kHz'}
 function cm(p){var gm=p.gm*1e-3,csv=p.cs*1e-15,cpv=p.cp*1e-15;var b=1+gm*p.rs/2;return{fz:1/(2*Math.PI*p.rs*csv),fp1:b/(2*Math.PI*p.rs*csv),fp2:1/(2*Math.PI*p.rd*cpv),boost:b,peakdB:20*Math.log10(b),dcG:20*Math.log10(gm*p.rd/b),pkG:20*Math.log10(gm*p.rd)}}
+
+// --- Power estimate ---
+function calcPower(){
+  var gm=gv('gm'),vds=parseFloat(document.getElementById('sl-vds').value),vdd=parseFloat(document.getElementById('sl-vdd').value);
+  var itail=gm; // gm in mS, itail ~ gm (mA) rough estimate for diff pair
+  var pdiff=itail*vdd; // mW
+  document.getElementById('pw-itail').textContent=itail.toFixed(2)+' mA';
+  document.getElementById('pw-pdiff').textContent=pdiff.toFixed(2)+' mW';
+  document.getElementById('bv-power').textContent=pdiff.toFixed(1)+' mW';
+}
 
 function wm(m){
   var ratio=m.fp1/FNYQ,rc='var(--text)';
@@ -261,6 +339,7 @@ function wm(m){
 function cv(name){return getComputedStyle(document.documentElement).getPropertyValue(name).trim()}
 function wl(){
   var h='<span><span class="ld" style="background:'+cv('--plot-ctle')+'"></span>CTLE</span>';
+  if(document.getElementById('show-phase').checked)h+='<span><span class="ldd" style="border-color:'+cv('--plot-phase')+'"></span>Phase</span>';
   if(channelMode!=='off'){var lb=channelMode==='custom'?customLoss:channelMode;h+='<span><span class="ldd" style="border-color:'+cv('--plot-ch')+'"></span>Channel ('+lb+' dB)</span>';if(document.getElementById('show-combo').checked)h+='<span><span class="ld" style="background:'+cv('--plot-combo')+'"></span>Combined</span>'}
   document.getElementById('legend').innerHTML=h;
 }
@@ -268,11 +347,15 @@ function sc(){var dpr=window.devicePixelRatio||1;plotW=plotArea.clientWidth;plot
 function tX(f){return PAD.l+((Math.log10(f)-LOGMIN)/(LOGMAX-LOGMIN))*(plotW-PAD.l-PAD.r)}
 function tY(db){return PAD.t+((YMAX-db)/(YMAX-YMIN))*(plotH-PAD.t-PAD.b)}
 
+// Phase axis: -180 to +90
+var PHMIN=-180,PHMAX=90;
+function tYph(deg){return PAD.t+((PHMAX-deg)/(PHMAX-PHMIN))*(plotH-PAD.t-PAD.b)}
+
 function dp(p,m){
-  var W=plotW,H=plotH;
+  var W=plotW,H=plotH,showPhase=document.getElementById('show-phase').checked;
   var _bg=cv('--plot-bg'),_grid=cv('--plot-grid'),_grid2=cv('--plot-grid2'),_zero=cv('--plot-zero'),_lbl=cv('--plot-label'),_lbl2=cv('--plot-label2');
   var _ctle=cv('--plot-ctle'),_ctleG=cv('--plot-ctle-glow'),_ch=cv('--plot-ch'),_combo=cv('--plot-combo'),_comboG=cv('--plot-combo-glow');
-  var _nyq=cv('--plot-nyq'),_nyqL=cv('--plot-nyq-label'),_pole=cv('--plot-pole'),_poleL=cv('--plot-pole-label'),_mk=cv('--plot-marker');
+  var _nyq=cv('--plot-nyq'),_nyqL=cv('--plot-nyq-label'),_pole=cv('--plot-pole'),_poleL=cv('--plot-pole-label'),_mk=cv('--plot-marker'),_ph=cv('--plot-phase');
   c.clearRect(0,0,W,H);c.fillStyle=_bg;c.fillRect(0,0,W,H);
   c.strokeStyle=_grid;c.lineWidth=.5;
   for(var db=YMIN;db<=YMAX;db+=5){c.beginPath();c.moveTo(PAD.l,tY(db));c.lineTo(W-PAD.r,tY(db));c.stroke()}
@@ -280,14 +363,19 @@ function dp(p,m){
   c.strokeStyle=_zero;c.lineWidth=1;c.setLineDash([]);c.beginPath();c.moveTo(PAD.l,tY(0));c.lineTo(W-PAD.r,tY(0));c.stroke();
   c.fillStyle=_lbl;c.font='10px system-ui,sans-serif';c.textAlign='right';
   for(db=YMIN;db<=YMAX;db+=10)c.fillText(db+'',PAD.l-6,tY(db)+3);
-  c.textAlign='center';[[1e6,'1M'],[1e7,'10M'],[1e8,'100M'],[1e9,'1G'],[1e10,'10G']].forEach(function(a){c.fillText(a[1],tX(a[0]),H-PAD.b+16)});
+  // Phase axis labels (right side)
+  if(showPhase){c.fillStyle=_ph;c.textAlign='left';for(var ph=-180;ph<=90;ph+=45){var yp=tYph(ph);if(yp>=PAD.t&&yp<=H-PAD.b)c.fillText(ph+'\u00B0',W-PAD.r+6,yp+3)}}
+  c.fillStyle=_lbl;c.textAlign='center';[[1e6,'1M'],[1e7,'10M'],[1e8,'100M'],[1e9,'1G'],[1e10,'10G']].forEach(function(a){c.fillText(a[1],tX(a[0]),H-PAD.b+16)});
   c.fillStyle=_lbl2;c.font='11px system-ui,sans-serif';c.fillText('Frequency (Hz)',W/2,H-4);
   c.save();c.translate(13,H/2);c.rotate(-Math.PI/2);c.fillText('Magnitude (dB)',0,0);c.restore();
+  if(showPhase){c.save();c.fillStyle=_ph;c.translate(W-6,H/2);c.rotate(Math.PI/2);c.fillText('Phase (\u00B0)',0,0);c.restore()}
   if(document.getElementById('show-nyq').checked&&FNYQ>=FMIN&&FNYQ<=FMAX){var nx=tX(FNYQ);c.strokeStyle=_nyq;c.lineWidth=1.5;c.setLineDash([5,4]);c.beginPath();c.moveTo(nx,PAD.t);c.lineTo(nx,H-PAD.b);c.stroke();c.setLineDash([]);c.fillStyle=_nyqL;c.font='9px system-ui,sans-serif';c.textAlign='center';c.fillText('fNyq = '+(FNYQ/1e9).toFixed(2)+' GHz',nx,PAD.t-4)}
   if(document.getElementById('show-poles').checked){[{f:m.fz,l:'fz'},{f:m.fp1,l:'fp1'},{f:m.fp2,l:'fp2'}].forEach(function(o){if(o.f>=FMIN&&o.f<=FMAX){var x2=tX(o.f);c.strokeStyle=_pole;c.lineWidth=1;c.setLineDash([3,3]);c.beginPath();c.moveTo(x2,PAD.t);c.lineTo(x2,H-PAD.b);c.stroke();c.setLineDash([]);c.fillStyle=_poleL;c.font='9px system-ui,sans-serif';c.textAlign='center';c.fillText(o.l,x2,H-PAD.b+28)}})}
   function tl(fn,col,w,dash){c.strokeStyle=col;c.lineWidth=w;c.setLineDash(dash||[]);c.beginPath();var s=false;for(var i=0;i<F.length;i++){var f2=F[i],d=fn(f2),x3=tX(f2),y=tY(Math.max(YMIN,Math.min(YMAX,d)));if(!s){c.moveTo(x3,y);s=true}else c.lineTo(x3,y)}c.stroke();c.setLineDash([])}
   if(channelMode!=='off'){var loss=gL();tl(function(f){return chL(f,loss)},_ch,1.5,[6,3]);if(document.getElementById('show-combo').checked){c.save();c.shadowColor=_comboG;c.shadowBlur=6;tl(function(f){return ctleM(f,p)+chL(f,loss)},_combo,2.5,[]);c.restore()}}
   c.save();c.shadowColor=_ctleG;c.shadowBlur=5;tl(function(f){return ctleM(f,p)},_ctle,2,[]);c.restore();
+  // Phase trace
+  if(showPhase){c.strokeStyle=_ph;c.lineWidth=1.5;c.setLineDash([6,4]);c.beginPath();var started=false;for(var i=0;i<F.length;i++){var f2=F[i],ph2=ctlePhase(f2,p),x3=tX(f2),y=tYph(Math.max(PHMIN,Math.min(PHMAX,ph2)));if(!started){c.moveTo(x3,y);started=true}else c.lineTo(x3,y)}c.stroke();c.setLineDash([])}
   // gain at fNyq readout
   if(FNYQ>=FMIN&&FNYQ<=FMAX){
     var gDb=ctleM(FNYQ,p),comboDb=null;
@@ -304,16 +392,67 @@ function dp(p,m){
     c.fillStyle=_mk;c.fillText(readout,ftx+8,fty-6);
     var ftInfo=gDb.toFixed(1)+' dB';if(comboDb!==null)ftInfo+=' (combined: '+comboDb.toFixed(1)+' dB)';
     document.getElementById('ft-gain').textContent=ftInfo;
-  }else{document.getElementById('ft-gain').textContent='—'}
+  }else{document.getElementById('ft-gain').textContent='\u2014'}
 }
 
-canvas.addEventListener('mousemove',function(e){var rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left;if(!cachedP||x<PAD.l||x>plotW-PAD.r){document.getElementById('cursor-info').textContent='';return}var lf=LOGMIN+((x-PAD.l)/(plotW-PAD.l-PAD.r))*(LOGMAX-LOGMIN),f=Math.pow(10,lf),db=ctleM(f,cachedP),txt=fmtF(f)+'  CTLE: '+db.toFixed(1)+' dB';if(channelMode!=='off'){var loss=gL(),ch=chL(f,loss);txt+='  Ch: '+ch.toFixed(1)+' dB  Sum: '+(db+ch).toFixed(1)+' dB'}document.getElementById('cursor-info').textContent=txt});
+canvas.addEventListener('mousemove',function(e){var rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left;if(!cachedP||x<PAD.l||x>plotW-PAD.r){document.getElementById('cursor-info').textContent='';return}var lf=LOGMIN+((x-PAD.l)/(plotW-PAD.l-PAD.r))*(LOGMAX-LOGMIN),f=Math.pow(10,lf),db=ctleM(f,cachedP),txt=fmtF(f)+'  CTLE: '+db.toFixed(1)+' dB';if(document.getElementById('show-phase').checked){txt+='  \u2220'+ctlePhase(f,cachedP).toFixed(1)+'\u00B0'}if(channelMode!=='off'){var loss=gL(),ch=chL(f,loss);txt+='  Ch: '+ch.toFixed(1)+' dB  Sum: '+(db+ch).toFixed(1)+' dB'}document.getElementById('cursor-info').textContent=txt});
 canvas.addEventListener('mouseleave',function(){document.getElementById('cursor-info').textContent=''});
 
-function update(){var p=ga();cachedP=p;var m=cm(p);wm(m);wl();dp(p,m)}
+function update(){var p=ga();cachedP=p;var m=cm(p);wm(m);wl();calcPower();dp(p,m);pushUndo()}
 function fullUpdate(){sc();update()}
 function setCh(mode){channelMode=mode;document.querySelectorAll('.btn-group .btn').forEach(function(b){b.classList.remove('active')});document.getElementById('ch-'+mode).classList.add('active');document.getElementById('custom-ch-row').style.display=mode==='custom'?'block':'none';update()}
 function setPreset(name){var pr={low:{gm:5,rs:600,cs:200,rd:400,cload:20,cpar:30},high:{gm:6.6,rs:1000,cs:250,rd:400,cload:20,cpar:30}}[name];PARAMS.forEach(function(id){document.getElementById('sl-'+id).value=pr[id];document.getElementById('in-'+id).value=pr[id]});if(name==='low')setCh('10');else if(name==='high')setCh('20');else update()}
+
+// --- Share via URL ---
+function encodeURL(){
+  var h=[];PARAMS.forEach(function(id){h.push(id+'='+gv(id))});
+  h.push('rate='+document.getElementById('sl-datarate').value);
+  h.push('mod='+modulation);h.push('ch='+channelMode);
+  if(channelMode==='custom')h.push('chloss='+customLoss);
+  h.push('vds='+document.getElementById('sl-vds').value);
+  h.push('vdd='+document.getElementById('sl-vdd').value);
+  return window.location.origin+window.location.pathname+'#'+h.join('&');
+}
+function decodeURL(){
+  var hash=window.location.hash.slice(1);if(!hash)return;
+  var params={};hash.split('&').forEach(function(pair){var kv=pair.split('=');if(kv.length===2)params[kv[0]]=kv[1]});
+  PARAMS.forEach(function(id){if(params[id]!==undefined){document.getElementById('sl-'+id).value=params[id];document.getElementById('in-'+id).value=params[id]}});
+  if(params.vds){document.getElementById('sl-vds').value=params.vds;document.getElementById('in-vds').value=params.vds}
+  if(params.vdd){document.getElementById('sl-vdd').value=params.vdd;document.getElementById('in-vdd').value=params.vdd}
+  if(params.rate){document.getElementById('sl-datarate').value=params.rate;document.getElementById('in-datarate').value=params.rate}
+  if(params.mod)setMod(params.mod);
+  if(params.chloss){customLoss=parseFloat(params.chloss);document.getElementById('sl-chloss').value=customLoss;document.getElementById('in-chloss').value=customLoss}
+  updateFnyq();
+  if(params.ch)setCh(params.ch);else update();
+}
+document.getElementById('btn-share').addEventListener('click',function(){
+  var url=encodeURL();
+  history.replaceState(null,'',url.split('#')[1]?'#'+url.split('#')[1]:'');
+  navigator.clipboard.writeText(url).then(function(){
+    var b=document.getElementById('btn-share');b.textContent='\u2705 Copied!';setTimeout(function(){b.innerHTML='&#x1F517; Share'},1500);
+  });
+});
+
+// --- Export PNG ---
+document.getElementById('btn-png').addEventListener('click',function(){
+  var link=document.createElement('a');link.download='ctle-bode-plot.png';link.href=canvas.toDataURL('image/png');link.click();
+});
+
+// --- Export CSV ---
+document.getElementById('btn-csv').addEventListener('click',function(){
+  var p=ga(),rows=['Frequency_Hz,CTLE_dB,Phase_deg'];
+  if(channelMode!=='off')rows[0]+=',Channel_dB,Combined_dB';
+  var loss=gL();
+  for(var i=0;i<F.length;i++){
+    var f=F[i],mag=ctleM(f,p),ph=ctlePhase(f,p),row=f.toExponential(4)+','+mag.toFixed(3)+','+ph.toFixed(2);
+    if(channelMode!=='off'){var cl=chL(f,loss);row+=','+cl.toFixed(3)+','+(mag+cl).toFixed(3)}
+    rows.push(row);
+  }
+  var blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  var link=document.createElement('a');link.download='ctle-data.csv';link.href=URL.createObjectURL(blob);link.click();
+});
+
+// --- Saved configs ---
 var STORE_KEY='ctle_saved_configs';
 function getSaved(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{}}catch(e){return{}}}
 function saveConfig(){
@@ -321,6 +460,7 @@ function saveConfig(){
   if(!name){document.getElementById('save-name').style.borderColor='var(--red)';setTimeout(function(){document.getElementById('save-name').style.borderColor='var(--border)'},1500);return}
   var cfg={};PARAMS.forEach(function(id){cfg[id]=gv(id)});
   cfg._ch=channelMode;cfg._chloss=customLoss;cfg._datarate=parseFloat(document.getElementById('sl-datarate').value);cfg._mod=modulation;cfg._ts=Date.now();
+  cfg._vds=parseFloat(document.getElementById('sl-vds').value);cfg._vdd=parseFloat(document.getElementById('sl-vdd').value);
   var all=getSaved();all[name]=cfg;localStorage.setItem(STORE_KEY,JSON.stringify(all));
   document.getElementById('save-name').value='';renderSaved();
 }
@@ -329,6 +469,8 @@ function loadConfig(name){
   PARAMS.forEach(function(id){if(cfg[id]!==undefined){document.getElementById('sl-'+id).value=cfg[id];document.getElementById('in-'+id).value=cfg[id]}});
   if(cfg._chloss!==undefined){customLoss=cfg._chloss;document.getElementById('sl-chloss').value=customLoss;document.getElementById('in-chloss').value=customLoss}
   if(cfg._datarate!==undefined){document.getElementById('sl-datarate').value=cfg._datarate;document.getElementById('in-datarate').value=cfg._datarate}
+  if(cfg._vds!==undefined){document.getElementById('sl-vds').value=cfg._vds;document.getElementById('in-vds').value=cfg._vds}
+  if(cfg._vdd!==undefined){document.getElementById('sl-vdd').value=cfg._vdd;document.getElementById('in-vdd').value=cfg._vdd}
   if(cfg._mod)setMod(cfg._mod);
   updateFnyq();
   if(cfg._ch)setCh(cfg._ch);else update();
@@ -346,23 +488,30 @@ function renderSaved(){
     row.style.cssText='display:flex;align-items:center;gap:4px';
     var btn=document.createElement('button');btn.className='preset';btn.style.cssText='flex:1;text-align:left';btn.textContent=name;
     btn.onclick=function(){loadConfig(name)};
-    var del=document.createElement('button');del.className='preset';del.style.cssText='color:var(--red);padding:3px 6px';del.textContent='✕';
+    var del=document.createElement('button');del.className='preset';del.style.cssText='color:var(--red);padding:3px 6px';del.textContent='\u2715';
     del.title='Delete '+name;del.onclick=function(){deleteConfig(name)};
     row.appendChild(btn);row.appendChild(del);list.appendChild(row);
   });
 }
 renderSaved();
+
+// --- Theme toggle ---
 function toggleTheme(){
   var html=document.documentElement,isLight=html.getAttribute('data-theme')==='light';
   html.setAttribute('data-theme',isLight?'dark':'light');
-  document.getElementById('theme-btn').textContent=isLight?'🌙':'☀️';
+  document.getElementById('theme-btn').textContent=isLight?'\uD83C\uDF19':'\u2600\uFE0F';
   localStorage.setItem('ctle_theme',isLight?'dark':'light');
   update();
 }
 document.getElementById('theme-btn').addEventListener('click',toggleTheme);
-(function(){var saved=localStorage.getItem('ctle_theme');if(saved==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('theme-btn').textContent='☀️'}})();
+(function(){var saved=localStorage.getItem('ctle_theme');if(saved==='light'){document.documentElement.setAttribute('data-theme','light');document.getElementById('theme-btn').textContent='\u2600\uFE0F'}})();
+
+// --- Init: decode URL params if present, then first render ---
+decodeURL();
 window.addEventListener('resize',fullUpdate);
 fullUpdate();
+// seed undo stack with initial state
+undoStack.push(captureState());updateUndoButtons();
 </script>
 </body>
 </html>
